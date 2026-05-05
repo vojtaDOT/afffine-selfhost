@@ -290,3 +290,25 @@ deployments, put it behind Caddy/Traefik/nginx, terminate TLS there, and set
 2. Re-run `./prepare.sh` if `affine-mcp-agent` changed.
 3. In Portainer, **Pull and redeploy** (enable "Re-pull image" for the AFFiNE
    image; enable "Re-build" to pick up agent code changes).
+
+## Maintenance: fix duplicated @DocName pills
+
+If your workspace was written under an older `mcp-ext` build, paragraphs with
+inline doc references may render as N duplicated pills (one per character of
+the original label). Run the one-shot repair script after redeploying:
+
+```bash
+# Inspect what would change first
+docker exec -e AFFINE_TOKEN=<workspace-token> affine_mcp_ext \
+  npm run -s fix-duplicate-refs -- --dry-run
+
+# Apply
+docker exec -e AFFINE_TOKEN=<workspace-token> affine_mcp_ext \
+  npm run -s fix-duplicate-refs
+```
+
+The script walks every non-trashed doc, collapses each multi-character
+`reference`-attribute run to a single placeholder, and pushes the diff via
+the same Yjs sync gateway the MCP proxy uses. Idempotent — safe to re-run.
+`AFFINE_TOKEN` can be omitted if `AFFINE_ACCESS_TOKEN` is already set on the
+container.
