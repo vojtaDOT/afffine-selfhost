@@ -222,8 +222,10 @@ const BLOCK_SPEC_SCHEMA = {
     '  • callout — { type:"callout", emoji?, text }\n' +
     '  • latex — { type:"latex", latex }  (LaTeX equation block)\n' +
     'text can be a plain string OR an array of inline ops: ' +
-    '[{text:"hello",bold:true}, {text:" see ",refDocId:"<docId>"}] — ' +
-    'refDocId renders as an @DocName pill linking to that doc. Other inline marks: ' +
+    '[{text:"hello",bold:true}, {refDocId:"<docId>"}] — ' +
+    'refDocId on its own renders as an @DocName pill linking to that doc; ' +
+    'the pill label is the linked doc\'s title, so do NOT also pass `text` ' +
+    '(it would duplicate as multiple pills). Other inline marks: ' +
     'bold, italic, underline, strike, code, link.',
   items: { type: 'object' },
 };
@@ -380,6 +382,15 @@ const updateBlockText: ToolDefinition = {
         }
         if (!op || typeof op !== 'object') continue;
         const o = op as Record<string, unknown>;
+        // Inline doc reference: must be a single-character placeholder —
+        // see block-builder.ts toDelta() for the rationale.
+        if (typeof o.refDocId === 'string' && o.refDocId) {
+          delta.push({
+            insert: ' ',
+            attributes: { reference: { type: 'LinkedPage', pageId: o.refDocId } },
+          });
+          continue;
+        }
         const text = typeof o.text === 'string' ? o.text : '';
         if (!text) continue;
         const attrs: Record<string, unknown> = {};
@@ -389,9 +400,6 @@ const updateBlockText: ToolDefinition = {
         if (o.strike) attrs.strike = true;
         if (o.code) attrs.code = true;
         if (typeof o.link === 'string') attrs.link = o.link;
-        if (typeof o.refDocId === 'string') {
-          attrs.reference = { type: 'LinkedPage', pageId: o.refDocId };
-        }
         const d: { insert: string; attributes?: Record<string, unknown> } = { insert: text };
         if (Object.keys(attrs).length > 0) d.attributes = attrs;
         delta.push(d);

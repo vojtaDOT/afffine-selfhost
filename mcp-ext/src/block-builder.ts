@@ -209,6 +209,18 @@ function toDelta(input: string | InlineOp[]): Delta[] {
       continue;
     }
     const { text, bold, italic, underline, strike, code, link, refDocId } = op;
+    // Inline doc reference: BlockSuite's reference renderer is embedded
+    // per-character — every char carrying the `reference` attribute renders
+    // as its own @DocName pill. The AFFiNE convention is a single-space
+    // placeholder; the pill text comes from the linked doc's current title,
+    // so the caller-provided `text` is ignored.
+    if (refDocId) {
+      out.push({
+        insert: ' ',
+        attributes: { reference: { type: 'LinkedPage', pageId: refDocId } },
+      });
+      continue;
+    }
     if (!text) continue;
     const attributes: Record<string, unknown> = {};
     if (bold) attributes.bold = true;
@@ -217,7 +229,6 @@ function toDelta(input: string | InlineOp[]): Delta[] {
     if (strike) attributes.strike = true;
     if (code) attributes.code = true;
     if (link) attributes.link = link;
-    if (refDocId) attributes.reference = { type: 'LinkedPage', pageId: refDocId };
     const d: Delta = { insert: text };
     if (Object.keys(attributes).length > 0) d.attributes = attributes;
     out.push(d);
